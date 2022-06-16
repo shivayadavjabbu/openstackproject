@@ -55,8 +55,8 @@
     shell: openstack server list -f value >> ./temp/hosts8
   - name: create hosts file and config file
     shell: python3 config1.py && python3 hosts1.py
-  - name: copy config file to
-    shell: cp ./jyoo_SSHconfig ~/.ssh/config
+  #- name: copy config file to
+   # shell: cp ./_SSHconfig ~/.ssh/config
 
   - meta: refresh_inventory
   - pause:
