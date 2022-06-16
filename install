@@ -14,7 +14,6 @@ if [ -f ./"$2"_SSHconfig ]; then
     rm ./"$2"_SSHconfig
 fi
 touch ./hosts
-touch ./temp/securityname
 touch ./temp/null
 touch ./temp/ansible_key
 touch ./temp/network
@@ -32,7 +31,6 @@ echo $2_network >> ./temp/network
 echo $2_bastion >> ./temp/bastion
 echo $2_haproxy >> ./temp/haproxy
 echo $2_subnet >> ./temp/subnet
-echo $2_security >> ./temp/securityname
 echo $2_SSHconfig >> ./temp/config
 echo ${3::-4} >> ./temp/publickeyfile
 . $1
