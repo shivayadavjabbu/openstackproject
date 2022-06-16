@@ -39,10 +39,6 @@
     os_network:
       name:  "{{ lookup('file', './temp/network') }}"
       state: absent
-  - name: delete security group
-    os_security_group:
-      state: absent
-      name: "{{ lookup('file', './temp/securityname') }}"
   - name: delete temp directory
     file:
       state: absent
