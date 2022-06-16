@@ -1,0 +1,52 @@
+---
+- hosts: localhost
+  tasks:
+  - name: delete keypairs
+    os_keypair:
+      name: "{{ lookup('file', './temp/ansible_key') }}"
+      state: absent
+  - name: delete floating ip of bastion
+    os_floating_ip:
+      state: absent
+      floating_ip_address: "{{ lookup('file', './temp/bastionfloating') }}"
+      network: ext-net
+      server: "{{ lookup('file', './temp/bastion') }}"
+    ignore_errors: yes
+  - name: delete floating ip of haproxy
+    os_floating_ip:
+      state: absent
+      floating_ip_address: "{{ lookup('file', './temp/haproxyfloating') }}"
+      server: "{{ lookup('file', './temp/haproxy') }}"
+      network: ext-net
+    ignore_errors: yes
+  - name : list servers
+    shell: openstack server list -f value >> ./temp/hosts9 && awk '{print $2}' ./temp/hosts9 >> ./temp/hosts10
+  - name: delete all servers
+    os_server:
+      name: '{{ item }}'
+      state: absent
+    with_items: "{{ lookup('file', './temp/hosts10').splitlines() }}"
+  - name: delete router
+    os_router:
+      name:  "{{ lookup('file', './temp/router') }}"
+      state: absent
+  - name: delete subnet
+    os_subnet:
+      name:  "{{ lookup('file', './temp/subnet') }}"
+      cidr: 192.168.0.0/24
+      state: absent
+  - name: delete network
+    os_network:
+      name:  "{{ lookup('file', './temp/network') }}"
+      state: absent
+  - name: delete security group
+    os_security_group:
+      state: absent
+      name: "{{ lookup('file', './temp/securityname') }}"
+  - name: delete temp directory
+    file:
+      state: absent
+      path: ./temp
+  
+
+

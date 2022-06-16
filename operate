@@ -1,0 +1,18 @@
+#!/bin/bash
+myArray=("./temp/hosts5" "./temp/hosts6" "./temp/hosts7" "./temp/hosts8")
+for str in ${myArray[@]}; do
+  if [ -f $str ]; then
+	if [ $str == './temp/hosts6' ]; then
+		cp ./temp/hosts6 ./temp/hosts4
+         fi 
+        rm $str
+
+fi
+done
+. $1
+ansible-playbook -i hosts openstack2.yaml
+echo confirming ping once again 
+ansible-playbook -i hosts ping.yaml
+echo installing flask
+ansible-playbook -i hosts flasksnmp.yaml
+

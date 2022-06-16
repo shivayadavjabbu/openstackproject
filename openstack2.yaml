@@ -1,0 +1,66 @@
+---
+- hosts: localhost
+  tasks:
+  - name : list servers
+    shell: openstack server list -f value >> ./temp/hosts5 && awk '{print $2}' ./temp/hosts5 >> ./temp/hosts6
+
+  - name: list the excess servers
+    shell:  grep -Fxvf ./temp/hosts4  ./temp/hosts6 > ./temp/hosts7
+    ignore_errors: yes
+
+  - name: delete server
+    os_server:
+      name: '{{ item }}'
+      state: absent
+    with_items: "{{ lookup('file', './temp/hosts7').splitlines() }}"
+
+  - name : Create more servers and check whether created servers are present
+    os_server:
+      state: present
+      name: dev{{ item }}
+      image: Ubuntu 20.04 Focal Fossa 20200423
+      flavor: "{{ lookup('file', './flavor') }}"
+      security_groups: default
+      key_name: "{{ lookup('file', './temp/ansible_key') }}"
+      auto_floating_ip: no
+      nics:
+        - net-id: "{{ lookup('file', './temp/testnetwork.id') }}"
+    with_sequence: start=1 end={{ lookup('file','servers1.conf') | int }}
+
+  - name: Checking server instance BastionNSO
+    os_server:
+      state: present
+      name: "{{ lookup('file', './temp/bastion') }}"
+      image: Ubuntu 20.04 Focal Fossa 20200423
+      flavor: "{{ lookup('file', './flavor') }}"
+      security_groups: default
+      key_name: "{{ lookup('file', './temp/ansible_key') }}"
+      nics:
+        - net-id: "{{ lookup('file', './temp/testnetwork.id') }}"
+    register: BastionET2594
+  - local_action: copy content={{ BastionET2594.openstack.public_v4 }} dest=./temp/bastionfloating
+  - name: checking server haproxy
+    os_server:
+      state: present
+      name: "{{ lookup('file', './temp/haproxy') }}"
+      image: Ubuntu 20.04 Focal Fossa 20200423
+      flavor: "{{ lookup('file', './flavor') }}"
+      security_groups: default
+      key_name: "{{ lookup('file', './temp/ansible_key') }}"
+      nics:
+        - net-id: "{{ lookup('file', './temp/testnetwork.id') }}"
+    register: devhaproxy
+  - local_action: copy content={{ devhaproxy.openstack.public_v4 }} dest=./temp/haproxyfloating
+  - name: list all the servers for creating hosts file and config file
+    shell: openstack server list -f value >> ./temp/hosts8
+  - name: create hosts file and config file
+    shell: python3 config1.py && python3 hosts1.py
+  - name: copy config file to
+    shell: cp ./jyoo_SSHconfig ~/.ssh/config
+
+  - meta: refresh_inventory
+  - pause:
+      seconds: 10
+- hosts: webservers
+  gather_facts: yes
+

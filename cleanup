@@ -1,0 +1,5 @@
+#!/bin/bash
+. $1
+ansible-playbook -i hosts openstack3.yaml
+rm ./hosts
+rm ./"$2"_SSHconfig

@@ -1,0 +1,41 @@
+if [ -d ./temp ]; then
+  echo "deleting temp file "
+  rm -r temp
+fi
+
+#creating temp directory for storing files
+mkdir ./temp  
+if [ -f ./hosts ]; then
+    echo "deleting hosts exists."
+    rm ./hosts
+fi
+if [ -f ./"$2"_SSHconfig ]; then
+    echo "deleting config exists."
+    rm ./"$2"_SSHconfig
+fi
+touch ./hosts
+touch ./temp/securityname
+touch ./temp/null
+touch ./temp/ansible_key
+touch ./temp/network
+touch ./temp/subnet
+touch ./temp/ansible_key
+touch ./temp/router
+touch ./temp/publickeyfile
+cp $3 ./temp/publickey
+touch ./temp/bastion
+touch ./temp/haproxy
+touch ./temp/config
+echo $2_key >> ./temp/ansible_key
+echo $2_router >> ./temp/router
+echo $2_network >> ./temp/network
+echo $2_bastion >> ./temp/bastion
+echo $2_haproxy >> ./temp/haproxy
+echo $2_subnet >> ./temp/subnet
+echo $2_security >> ./temp/securityname
+echo $2_SSHconfig >> ./temp/config
+echo ${3::-4} >> ./temp/publickeyfile
+. $1
+ansible-playbook -i hosts openstack1.yaml
+echo confirming ping of hosts once again
+ansible-playbook -i hosts ping.yaml

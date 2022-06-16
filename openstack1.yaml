@@ -1,0 +1,103 @@
+---
+- hosts: localhost
+  tasks:
+#  - name: list the vm in a file with hostnames
+#    shell: openstack server list -f value >> ./temp/hosts1 && awk '{print $2}' ./temp/hosts1 >> ./temp/hosts2
+#  - name: delete server
+#    os_server:
+#      name: '{{ item }}'
+#      state: absent
+#    with_items: "{{ lookup('file', './temp/hosts2').splitlines() }}"
+
+  - name: Create new keypair from current user's default SSH key
+    os_keypair:
+      state: present
+      name: "{{ lookup('file', './temp/ansible_key') }}"
+      public_key_file: ./temp/publickey
+  - name: Create the test network
+    os_network:
+      state: present
+      name: "{{ lookup('file', './temp/network') }}"
+      external: False
+      shared: False
+    register: testnet_network
+  - local_action: copy content={{ testnet_network.id }} dest=./temp/testnetwork.id
+
+  - name: Create the test subnet
+    os_subnet:
+      state: present
+      network_name: "{{ testnet_network.id }}"
+      name: "{{ lookup('file', './temp/subnet') }}"
+      ip_version: 4
+      cidr: 192.168.0.0/24
+      gateway_ip: 192.168.0.1
+      enable_dhcp: yes
+      dns_nameservers:
+        - 8.8.8.8
+    register: testnet_sub
+  - local_action: copy content={{ testnet_sub.id }} dest=./temp/testnetsub.id
+
+  - name: Create the test router
+    ignore_errors: yes #for some reasons, re-running this task gives errors
+    os_router:
+      state: present
+      name: "{{ lookup('file', './temp/router') }}"
+      network: ext-net
+      interfaces:
+        - "{{ lookup('file', './temp/subnet') }}"
+    register: testnet_router
+  - local_action: copy content={{ testnet_router }} dest=./temp/testnetrouter
+  - name: Create server instance BastionNSO
+    os_server:
+      state: present
+      name: "{{ lookup('file', './temp/bastion') }}"
+      image: Ubuntu 20.04 Focal Fossa 20200423
+      flavor: "{{ lookup('file', './flavor') }}"
+      security_groups: default
+      key_name: "{{ lookup('file', './temp/ansible_key') }}"
+      nics:
+        - net-id: "{{ lookup('file', './temp/testnetwork.id') }}"
+    register: BastionET2594
+  - local_action: copy content={{ BastionET2594.openstack.public_v4 }} dest=./temp/bastionfloating
+
+  - name: Create server devhaproxy
+    os_server:
+      state: present
+      name: "{{ lookup('file', './temp/haproxy') }}"
+      image: Ubuntu 20.04 Focal Fossa 20200423
+      flavor: "{{ lookup('file', './flavor') }}"
+      security_groups: default
+      key_name: "{{ lookup('file', './temp/ansible_key') }}"
+      nics:
+        - net-id: "{{ lookup('file', './temp/testnetwork.id') }}"
+    register: devhaproxy
+  - local_action: copy content={{ devhaproxy.openstack.public_v4 }} dest=./temp/haproxyfloating
+  
+  - name : Create server nodes as required from server.conf file
+    os_server:
+      state: present
+      name: dev{{ item }}
+      image: Ubuntu 20.04 Focal Fossa 20200423
+      flavor: "{{ lookup('file', './flavor') }}"
+      key_name: "{{ lookup('file', './temp/ansible_key') }}"
+      auto_floating_ip: no
+      security_groups: default
+      nics:
+        - net-id: "{{ testnet_network.id }}"
+    with_sequence: start=1 end={{ lookup('file','servers.conf') | int }}
+
+  - name: list the vm in a file with hostnames
+    shell: openstack server list -f value >> ./temp/hosts1 && grep -nr "$2_network" ./temp/hosts1 > ./temp/hosts2 && awk '{print $2}' ./temp/hosts2 >> ./temp/hosts4
+  - name: create a hosts file
+    shell: python3 ./hosts.py
+  - name: create a config file
+    shell: python3 ./config.py
+  - name: copy config file to
+    shell: cp ./"jyoo_SSHconfig" ~/.ssh/config
+  - meta: refresh_inventory
+  - pause:
+      seconds: 10
+- hosts: haproxy
+  become: yes
+- hosts: webservers
+  become: yes
